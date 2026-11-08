@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0a10">
+<meta name="description" content="Juego a distancia para dos: turnos, consignas y castigos para jugar en llamada.">
+<title>Juego a distancia</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0a10'/%3E%3Ccircle cx='32' cy='32' r='13' fill='%23ff4d8d'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0b0a10; --panel:#15131d; --panel2:#1c1927; --line:#2a2538;
+    --txt:#f3eff8; --dim:#9a91ad; --acc:#ff4d8d; --acc2:#ffb347; --ok:#4dd6a0; --bad:#ff5c5c;
+    --r:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(900px 500px at 15% -10%, #2a1330 0%, transparent 60%),
+      radial-gradient(700px 400px at 90% 110%, #10222e 0%, transparent 55%),
+      var(--bg);
+    color:var(--txt);
+    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:720px;margin:0 auto;padding:18px 14px 40px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .title{font-size:22px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{font-size:12px;color:var(--dim);margin-top:2px;max-width:38ch}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .hidden{display:none !important}
+  .btn{
+    appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--txt);
+    padding:11px 15px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;
+    transition:.15s transform,.15s background,.15s border-color;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn:hover{background:#241f31;border-color:#3b3350}
+  .btn:active{transform:scale(.97)}
+  .btn.sm{padding:7px 11px;font-size:12px;border-radius:10px}
+  .btn.ghost{background:transparent}
+  .btn.primary{background:linear-gradient(135deg,var(--acc),#e0347a);border-color:transparent;color:#fff;font-weight:800;box-shadow:0 8px 24px -12px var(--acc)}
+  .btn.primary:hover{background:linear-gradient(135deg,#ff6a9e,#e0347a)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+  h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
+  .field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:130px}
+  label{font-size:11px;color:var(--dim);letter-spacing:.05em;text-transform:uppercase}
+  input{
+    background:#0f0d16;border:1px solid var(--line);color:var(--txt);
+    padding:10px 12px;border-radius:11px;font-size:14px;font-family:inherit;width:100%;
+  }
+  input:focus{outline:2px solid var(--acc);outline-offset:1px;border-color:transparent}
+  .lvlbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .lvl{
+    appearance:none;border:1px solid var(--line);background:#12101a;color:var(--dim);
+    padding:10px 4px;border-radius:11px;font-size:12px;font-weight:700;cursor:pointer;
+  }
+  .lvl[aria-pressed="true"]{background:linear-gradient(135deg,#3a1630,#2a1122);color:var(--txt);border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+  .chip{
+    appearance:none;border:1px solid var(--line);background:#12101a;color:var(--dim);
+    padding:8px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .chip[aria-pressed="true"]{background:#20303a;border-color:#3d6b7d;color:#cdeaf5}
+  .note{font-size:12px;color:var(--dim);margin-top:12px;line-height:1.45}
+  .turn{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:10px 14px;margin-bottom:12px;font-size:13px;
+  }
+  .turn b{color:var(--acc2)}
+  .timer{font-variant-numeric:tabular-nums;color:var(--dim);font-weight:700}
+  .timer.run{color:var(--ok)}
+  .timer.warn{color:var(--bad)}
+  .safeline{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    font-size:12px;color:var(--dim);margin:-4px 0 12px;padding:0 4px;
+  }
+  .safeline b{color:var(--txt)}
+  .card{
+    background:linear-gradient(180deg,#191423,#121019);
+    border:1px solid var(--line);border-radius:22px;padding:18px;
+    min-height:250px;display:flex;flex-direction:column;gap:14px;
+    box-shadow:0 30px 60px -40px #000;
+  }
+  .card.punish{border-color:#5c2230;background:linear-gradient(180deg,#22131a,#150e13)}
+  .badge{display:flex;justify-content:space-between;align-items:center;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
+  .badge span:first-child{color:var(--acc2)}
+  .punish .badge span:first-child{color:var(--bad)}
+  .dots{display:flex;gap:4px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:#332c44;display:block}
+  .dots i.on{background:var(--acc)}
+  .ctext{font-size:clamp(17px,4.6vw,21px);line-height:1.42;font-weight:650;letter-spacing:-.01em;flex:1;display:flex;align-items:center}
+  .ctext.muted{color:var(--dim);font-weight:500;font-size:16px}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .opts .btn{white-space:normal;text-align:center;line-height:1.3}
+  .opts .btn.chosen{background:#3a1630;border-color:var(--acc);color:#fff}
+  .scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .scale .btn{padding:10px 0;font-variant-numeric:tabular-nums}
+  .scale .btn.chosen{background:#3a1630;border-color:var(--acc);color:#fff}
+  .big{
+    font-size:64px;font-weight:900;line-height:1;text-align:center;letter-spacing:-.04em;
+    background:linear-gradient(180deg,var(--acc2),var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent;
+    padding:6px 0;
+  }
+  .big.small{font-size:26px;line-height:1.2;-webkit-text-fill-color:var(--txt);color:var(--txt)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .actions .btn{flex:1;min-width:calc(33.333% - 8px)}
+  .actions.one .btn{min-width:0}
+  .actions.two .btn{min-width:calc(50% - 4px)}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{display:flex;gap:10px;align-items:flex-start;background:#0f0d16;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}
+  .item p{margin:0;flex:1;line-height:1.4}
+  .item .mini{display:flex;gap:6px;flex-shrink:0}
+  .empty{font-size:12px;color:var(--dim);font-style:italic}
+  footer{margin-top:26px;text-align:center;font-size:11px;color:#5d5570}
+  @media (max-width:420px){
+    .opts{grid-template-columns:1fr}
+    .actions .btn{min-width:calc(50% - 4px)}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div>
+      <div class="title">Juego a distancia</div>
+      <div class="sub">Turnos, consignas y castigos para jugar en llamada</div>
+    </div>
+    <div class="row">
+      <button class="btn sm ghost" id="bCfg">Ajustes</button>
+      <button class="btn sm ghost" id="bSaved">Guardadas <span id="nSaved">0</span></button>
+      <button class="btn sm ghost" id="bPend">Pendientes <span id="nPend">0</span></button>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="cfg">
+    <h3>Configuración</h3>
+    <div class="row" style="margin-bottom:12px">
+      <div class="field"><label>Jugadora 1</label><input type="text" id="p1" maxlength="14" placeholder="Vos"></div>
+      <div class="field"><label>Jugadora 2</label><input type="text" id="p2" maxlength="14" placeholder="Ella"></div>
+    </div>
+    <div class="field" style="margin-bottom:12px"><label>Palabra de corte</label><input type="text" id="safe" maxlength="18" placeholder="rojo"></div>
+    <h3>Intensidad</h3>
+    <div class="lvlbar" id="lvls">
+      <button class="lvl" data-l="1">Suave</button>
+      <button class="lvl" data-l="2">Caliente</button>
+      <button class="lvl" data-l="3">Fuerte</button>
+      <button class="lvl" data-l="4">Sádico</button>
+    </div>
+    <h3 style="margin-top:14px">Categorías</h3>
+    <div class="row" id="cats">
+      <button class="chip" data-c="elec">Uno o el otro</button>
+      <button class="chip" data-c="cons">Consignas</button>
+      <button class="chip" data-c="preg">Preguntas</button>
+      <button class="chip" data-c="escala">Escalas</button>
+      <button class="chip" data-c="nunca">Nunca / siempre</button>
+    </div>
+    <div class="note">Los castigos siempre están activos: si saltás una carta, se roba un castigo. Palabra de corte corta todo sin discusión.</div>
+  </div>
+
+  <div id="savedBox" class="panel hidden">
+    <h3>Guardadas para repetir</h3>
+    <div class="list" id="savedList"></div>
+  </div>
+
+  <div id="pendBox" class="panel hidden">
+    <h3>Pendientes para cuando se vean</h3>
+    <div class="list" id="pendList"></div>
+  </div>
+
+  <div id="game">
+    <div class="turn" id="turnBar">
+      <span>Turno de <b id="turnName">Vos</b></span>
+      <span class="row"><span class="timer" id="clock">00:00</span><button class="btn sm ghost" id="bSwap">Cambiar</button></span>
+    </div>
+
+    <div class="safeline">
+      <span>Palabra de corte: <b id="safeShow">rojo</b></span>
+      <button class="btn sm ghost" id="bCorte">Cortar</button>
+    </div>
+
+    <div class="card" id="card">
+      <div class="badge"><span id="badgeType">Lista para jugar</span><span class="dots" id="dots"></span></div>
+      <div class="ctext" id="ctext">Pulsá "Robar carta" y leé la consigna en voz alta.</div>
+      <div class="opts hidden" id="opts"></div>
+      <div class="big hidden" id="big"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="bDraw">Robar carta</button>
+      <button class="btn" id="bDone">Cumplido</button>
+      <button class="btn" id="bSkip">Saltar</button>
+    </div>
+    <div class="actions two">
+      <button class="btn" id="bSave">Guardar</button>
+      <button class="btn" id="bPendCard">A pendientes</button>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="bDie">Tirar dado</button>
+      <button class="btn ghost" id="bRoul">Ruleta</button>
+      <button class="btn ghost" id="bMin">1 minuto</button>
+    </div>
+    <div class="note" id="noteBox">Turnos alternados: la que recibe la carta la cumple y pasa el turno. Si no cumple, se come un castigo.</div>
+  </div>
+
+  <footer>Versión 2 · datos guardados solo en este dispositivo</footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = s => document.querySelector(s);
+  const KEY = "juego-distancia-v2";
+
+  const DB = {
+    elec: [
+      [1,"¿Prendida o dormida? Elegí el estado en el que querés que te vea hoy."],
+      [1,"¿Voz o texto? Todo lo que digas los próximos cinco minutos va por audio."],
+      [1,"¿Arriba o abajo? Elegí desde dónde te mira la cámara."],
+      [1,"¿Luz o sombra? Elegí cómo queda iluminada la escena."],
+      [2,"¿Ropa o sin ropa? Elegí qué se ve en los próximos tres turnos."],
+      [2,"¿Rápido o lento? Elegí el ritmo que va a llevar la próxima consigna."],
+      [2,"¿Manos o accesorio? Elegí con qué se cumple la próxima carta."],
+      [2,"¿Mirando o de espaldas? Elegí cómo te expone la cámara."],
+      [2,"¿Silencio o susurro? Elegí cómo se responde hasta el próximo turno."],
+      [3,"¿Todo o nada? Elegí si la próxima carta se cumple entera o se salta con castigo doble."],
+      [3,"¿Cámara fija o en mano? Elegí cómo se graba lo que sigue."],
+      [3,"¿Acá o en la cama? Elegí el lugar para las próximas tres cartas."],
+      [3,"¿Una prenda menos o un minuto más? Elegí el precio del próximo turno."],
+      [4,"¿Obedecer o mandar? Elegí rol para los próximos diez minutos."],
+      [4,"¿Ojos cerrados o vendada? Elegí cómo esperás la próxima carta."],
+      [4,"¿Castigo para vos o para la otra? Elegí quién paga si fallás."]
+    ],
+    cons: [
+      [1,"Mostrá tu placard y elegí en vivo el conjunto de la noche."],
+      [1,"Ponete de pie y date una vuelta completa frente a la cámara."],
+      [1,"Mandá una foto de cómo estás ahora mismo, sin editar."],
+      [1,"Acercá la cámara a tu cara y contá el día en treinta segundos."],
+      [2,"Cambiate de ropa con la cámara prendida, sin cortar."],
+      [2,"Apagá la luz grande y quedate solo con una lámpara."],
+      [2,"Mostrá tres rincones de tu casa que la otra nunca vio."],
+      [2,"Poné una música y bailá un minuto entero para la cámara."],
+      [3,"Describí en voz alta lo que harías si estuvieran en la misma cama."],
+      [3,"Date la vuelta y mostrá la espalda, sin apuro."],
+      [3,"Ponete algo de la otra; si no hay nada, improvisá con lo que tengas a mano."],
+      [3,"Elegí un punto del cuerpo y explicale a la cámara por qué te gusta."],
+      [3,"Contá la última vez que te tocaste pensando en la otra, con detalles."],
+      [4,"Grabá un audio de treinta segundos y mandalo sin escucharlo antes."],
+      [4,"Hacé una pose nueva cada vez que la otra cuente hasta tres, cinco rondas."],
+      [4,"Dejá la cámara prendida y hacé lo que la otra te dicte por chat, sin hablar."]
+    ],
+    preg: [
+      [1,"¿Qué es lo primero que mirás de alguien en una foto?"],
+      [1,"¿Cuál fue el mensaje que más te costó mandar?"],
+      [1,"¿Qué parte de tu cuerpo te gusta más y por qué?"],
+      [1,"¿Qué es lo que más te gusta de la otra, sin hablar de la cara?"],
+      [2,"¿Cuál es tu fantasía que todavía no contaste?"],
+      [2,"¿Qué te da vergüenza mostrar en cámara?"],
+      [2,"¿Preferís que te miren o mirar? Contá por qué."],
+      [2,"¿Qué harías en los primeros diez minutos si estuvieran juntas?"],
+      [3,"¿Qué te excita más: la voz, el texto o la espera?"],
+      [3,"¿Cuál fue la vez que más ganas tuviste y no pudiste?"],
+      [3,"¿Qué te gustaría que la otra haga sin preguntarte?"],
+      [3,"¿Qué castigo te parecería justo para vos esta noche?"],
+      [4,"¿Qué te gustaría que te digan al oído ahora mismo?"],
+      [4,"¿Cuál es tu límite y cómo lo negociás?"],
+      [4,"¿Qué es lo más expuesta que estuviste frente a una cámara?"],
+      [4,"¿Qué te gustaría probar que todavía no probaste?"]
+    ],
+    escala: [
+      [1,"Del 1 al 10: cuántas ganas tenés de estar jugando ahora."],
+      [1,"Del 1 al 10: cuánto te importa la luz en una videollamada."],
+      [1,"Del 1 al 10: cuánto te gusta que te miren."],
+      [1,"Del 1 al 10: qué tan cómoda estás con la cámara prendida."],
+      [2,"Del 1 al 10: cuánto te excita la espera."],
+      [2,"Del 1 al 10: qué tan obediente te sentís hoy."],
+      [2,"Del 1 al 10: cuánto te gusta mandar."],
+      [2,"Del 1 al 10: cuánto te gusta que te hablen al oído."],
+      [3,"Del 1 al 10: cuánto te gusta exponerte."],
+      [3,"Del 1 al 10: cuánto te gusta el castigo."],
+      [3,"Del 1 al 10: qué tan lejos querés llegar esta noche."],
+      [3,"Del 1 al 10: cuánta ropa te sobra ahora mismo."],
+      [4,"Del 1 al 10: cuánto te gusta que decidan por vos."],
+      [4,"Del 1 al 10: qué tan sádica te sentís hoy."],
+      [4,"Del 1 al 10: cuánto aguantás sin tocar."],
+      [4,"Del 1 al 10: cuánto te importa que la otra esté mirando."]
+    ],
+    nunca: [
+      [1,"Nunca me animé a mostrar... contá uno."],
+      [1,"Siempre quise que me hagan... contá uno."],
+      [1,"Nunca digo lo que pienso cuando... completá."],
+      [1,"Siempre me rindo cuando... completá."],
+      [2,"Nunca me gustó que me digan... contá."],
+      [2,"Siempre me gustó que me miren mientras... completá."],
+      [2,"Nunca probé en cámara... contá uno."],
+      [2,"Siempre quise hacer en llamada... contá uno."],
+      [3,"Nunca confesé qué me da vergüenza de... completá."],
+      [3,"Siempre fantaseo con... contá uno sin filtrar."],
+      [3,"Nunca pedí permiso para... contá uno."],
+      [3,"Siempre terminé haciendo lo que... completá."],
+      [4,"Nunca me arrepentí de... contá uno."],
+      [4,"Siempre pierdo el control cuando... completá."],
+      [4,"Nunca dije en voz alta que quiero... decilo ahora."],
+      [4,"Siempre quise que alguien me... pedilo en voz alta."]
+    ]
+  };
+
+  const CASTIGOS = [
+    [1,"Mandá un audio de veinte segundos hablando en voz baja, sin decir nada concreto."],
+    [1,"Quedate con la cámara en la cara hasta el próximo turno, sin mirar el chat."],
+    [1,"Contá algo que te dé vergüenza en tres frases."],
+    [2,"Ponete de pie y quedate así hasta que la otra te deje sentar."],
+    [2,"Sacate una prenda que elija la otra."],
+    [2,"Mandá una foto desde un ángulo que nunca usás."],
+    [2,"Repetí en voz alta la última frase de la otra, tal cual, tres veces."],
+    [3,"Diez segundos de cámara con la luz que elija la otra."],
+    [3,"Audio de un minuto contando una fantasía, sin cortar."],
+    [3,"Quedate sin hablar hasta que la otra te habilite."],
+    [4,"Castigo doble: cumplí dos pendientes antes del próximo turno."],
+    [4,"La otra elige cómo seguís vestida el resto de la partida."]
+  ];
+
+  const ETIQUETA = {
+    elec:"Uno o el otro", cons:"Consigna", preg:"Pregunta",
+    escala:"Escala", nunca:"Nunca / siempre", castigo:"Castigo"
+  };
+
+  const DADO = {
+    1:"Nada. Salvada.",
+    2:"Un castigo leve del mazo.",
+    3:"Quince segundos de cámara fija, sin hablar.",
+    4:"La otra elige una prenda que te sobra.",
+    5:"Repetís el turno: robás otra carta.",
+    6:"Cumplís doble o se acumula un pendiente."
+  };
+
+  const RULETA = [
+    "Nada, seguís tranquila","Castigo del mazo","La otra manda un minuto",
+    "Cambio de rol","Cumplís doble","Un pendiente para cuando se vean"
+  ];
+
+  const S = {
+    p:["Vos","Ella"], safe:"rojo", level:1,
+    cats:{elec:true,cons:true,preg:true,escala:true,nunca:true},
+    turn:0, saved:[], pend:[], card:null, last:"",
+    clockId:null, minId:null, turnStart:Date.now(), busy:false
+  };
+
+  /* ---------- persistencia ---------- */
+  function save(){
+    try{
+      localStorage.setItem(KEY, JSON.stringify({
+        p:S.p, safe:S.safe, level:S.level, cats:S.cats, turn:S.turn, saved:S.saved, pend:S.pend
+      }));
+    }catch(e){}
+  }
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return;
+      const d = JSON.parse(raw);
+      if(Array.isArray(d.p)) S.p = [d.p[0]||"Vos", d.p[1]||"Ella"];
+      if(typeof d.safe === "string" && d.safe) S.safe = d.safe;
+      if([1,2,3,4].includes(d.level)) S.level = d.level;
+      if(d.cats && typeof d.cats === "object") Object.keys(S.cats).forEach(k => S.cats[k] = !!d.cats[k]);
+      if(d.turn === 1) S.turn = 1;
+      if(Array.isArray(d.saved)) S.saved = d.saved;
+      if(Array.isArray(d.pend)) S.pend = d.pend;
+    }catch(e){}
+  }
+
+  /* ---------- render ---------- */
+  function dots(n){
+    $("#dots").innerHTML = [1,2,3,4].map(i => `<i class="${i <= n ? "on" : ""}"></i>`).join("");
+  }
+  function badge(txt, castigo){
+    $("#badgeType").textContent = txt;
+    $("#card").classList.toggle("punish", !!castigo);
+  }
+  function setText(t, muted){
+    const el = $("#ctext");
+    el.textContent = t;
+    el.classList.toggle("muted", !!muted);
+  }
+  function clearExtras(){
+    $("#opts").classList.add("hidden");
+    $("#opts").innerHTML = "";
+    $("#big").classList.add("hidden");
+    $("#big").classList.remove("small");
+    $("#big").textContent = "";
+  }
+  function turnName(){
+    $("#turnName").textContent = S.p[S.turn];
+  }
+  function safeShow(){
+    $("#safeShow").textContent = S.safe;
+  }
+  function syncUI(){
+    $("#p1").value = S.p[0];
+    $("#p2").value = S.p[1];
+    $("#safe").value = S.safe;
+    document.querySelectorAll("#lvls .lvl").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.l === S.level)));
+    document.querySelectorAll("#cats .chip").forEach(b => b.setAttribute("aria-pressed", String(!!S.cats[b.dataset.c])));
+    turnName(); safeShow();
+    $("#nSaved").textContent = S.saved.length;
+    $("#nPend").textContent = S.pend.length;
+  }
+  function renderSaved(){
+    const box = $("#savedList");
+    if(!S.saved.length){ box.innerHTML = '<div class="empty">Todavía no guardaste nada.</div>'; return; }
+    box.innerHTML = "";
+    S.saved.forEach((t,i) => {
+      const d = document.createElement("div");
+      d.className = "item";
+      d.innerHTML = `<p></p><div class="mini">
+        <button class="btn sm" data-use="${i}">Usar</button>
+        <button class="btn sm ghost" data-del="${i}">X</button></div>`;
+      d.querySelector("p").textContent = t;
+      box.appendChild(d);
+    });
+  }
+  function renderPend(){
+    const box = $("#pendList");
+    if(!S.pend.length){ box.innerHTML = '<div class="empty">Sin pendientes. Buen trabajo.</div>'; return; }
+    box.innerHTML = "";
+    S.pend.forEach((t,i) => {
+      const d = document.createElement("div");
+      d.className = "item";
+      d.innerHTML = `<p></p><div class="mini">
+        <button class="btn sm" data-ok="${i}">Hecho</button>
+        <button class="btn sm ghost" data-del="${i}">X</button></div>`;
+      d.querySelector("p").textContent = t;
+      box.appendChild(d);
+    });
+  }
+
+  /* ---------- reloj de turno ---------- */
+  function startClock(){
+    clearInterval(S.clockId);
+    S.turnStart = Date.now();
+    const el = $("#clock");
+    el.textContent = "00:00";
+    el.classList.remove("warn");
+    el.classList.add("run");
+    S.clockId = setInterval(() => {
+      const s = Math.floor((Date.now() - S.turnStart) / 1000);
+      el.textContent = String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+      if(s >= 120) el.classList.add("warn");
+    }, 1000);
+  }
+
+  /* ---------- mazo ---------- */
+  function pool(){
+    const out = [];
+    Object.keys(S.cats).forEach(c => {
+      if(!S.cats[c]) return;
+      DB[c].forEach(([l,t]) => { if(l <= S.level) out.push({c,l,t}); });
+    });
+    return out;
+  }
+  function pick(arr){
+    if(!arr.length) return null;
+    let n = 0, x;
+    do{ x = arr[Math.floor(Math.random()*arr.length)]; n++; }
+    while(arr.length > 1 && x.t === S.last && n < 8);
+    S.last = x.t;
+    return x;
+  }
+
+  function draw(){
+    const p = pool();
+    if(!p.length){
+      badge("Mazo vacío");
+      setText("Activá alguna categoría en Ajustes o bajá la intensidad.", true);
+      clearExtras(); dots(0); return;
+    }
+    const card = pick(p);
+    S.card = { tipo:card.c, l:card.l, t:card.t, resuelto:false };
+    badge(ETIQUETA[card.c], false);
+    dots(card.l);
+    clearExtras();
+    setText(card.t, false);
+
+    if(card.c === "elec"){
+      const [a,b] = card.t.replace(/[¿?]/g,"").split(" Elegí")[0].split(/\s+o\s+/);
+      const opts = $("#opts");
+      opts.classList.remove("hidden");
+      [a,b].forEach(o => {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.textContent = (o||"").trim();
+        btn.addEventListener("click", () => {
+          if(S.card?.resuelto) return;
+          S.card.resuelto = true;
+          opts.querySelectorAll(".btn").forEach(x => x.disabled = true);
+          btn.classList.add("chosen");
+          setText(card.t + " — Elegiste: " + btn.textContent, false);
+        });
+        opts.appendChild(btn);
+      });
+    }
+    if(card.c === "escala"){
+      const sc = document.createElement("div");
+      sc.className = "scale";
+      for(let i = 1; i <= 10; i++){
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.textContent = i;
+        btn.addEventListener("click", () => {
+          if(S.card?.resuelto) return;
+          S.card.resuelto = true;
+          sc.querySelectorAll(".btn").forEach(x => x.disabled = true);
+          btn.classList.add("chosen");
+          $("#big").classList.remove("hidden");
+          $("#big").textContent = i;
+        });
+        sc.appendChild(btn);
+      }
+      const opts = $("#opts");
+      opts.classList.remove("hidden");
+      opts.appendChild(sc);
+    }
+  }
+
+  function castigo(){
+    const p = CASTIGOS.filter(([l]) => l <= S.level);
+    const c = pick(p) || CASTIGOS[0];
+    S.card = { tipo:"castigo", l:c[0], t:c[1], resuelto:false };
+    badge("Castigo", true);
+    dots(c[0]);
+    clearExtras();
+    setText(c[1], false);
+    S.pend.push(c[1]);
+    save(); renderPend(); syncUI();
+    $("#noteBox").textContent = "Castigo anotado en pendientes. Se cumple antes del próximo turno.";
+  }
+
+  /* ---------- acciones ---------- */
+  function nextTurn(){
+    S.turn = S.turn === 0 ? 1 : 0;
+    turnName(); save(); startClock();
+  }
+
+  $("#bDraw").addEventListener("click", () => {
+    if(S.minId) return;
+    draw();
+    $("#noteBox").textContent = "Leela en voz alta. La que recibe, cumple.";
+  });
+
+  $("#bDone").addEventListener("click", () => {
+    if(!S.card){ setText("Primero robá una carta.", true); return; }
+    badge("Cumplida", S.card.tipo === "castigo");
+    setText(S.card.t, false);
+    nextTurn();
+    $("#noteBox").textContent = "Cumplido. Pasa el turno.";
+  });
+
+  $("#bSkip").addEventListener("click", () => {
+    castigo();
+  });
+
+  $("#bSave").addEventListener("click", () => {
+    if(!S.card){ setText("No hay carta para guardar.", true); return; }
+    S.saved.push(S.card.t);
+    save(); renderSaved(); syncUI();
+    $("#noteBox").textContent = "Guardada para repetir cuando quieras.";
+  });
+
+  $("#bPendCard").addEventListener("click", () => {
+    if(!S.card){ setText("No hay carta para mandar a pendientes.", true); return; }
+    S.pend.push(S.card.t);
+    save(); renderPend(); syncUI();
+    $("#noteBox").textContent = "Anotada en pendientes para cuando se vean.";
+  });
+
+  $("#bSwap").addEventListener("click", () => {
+    nextTurn();
+    $("#noteBox").textContent = "Turno cambiado a mano.";
+  });
+
+function castigoLeve(){
+    const p = CASTIGOS.filter(([l]) => l <= 2);
+    const c = pick(p) || CASTIGOS[0];
+    S.card = { tipo:"castigo", l:c[0], t:c[1], resuelto:false };
+    badge("Castigo leve", true);
+    dots(c[0]);
+    clearExtras();
+    setText(c[1], false);
+    $("#noteBox").textContent = "Castigo leve: se paga ahora, no va a pendientes.";
+  }
+
+  $("#bDie").addEventListener("click", () => {
+    if(S.minId) return;
+    clearExtras();
+    badge("Dado", false);
+    dots(0);
+    const n = Math.floor(Math.random()*6) + 1;
+    $("#big").classList.remove("hidden");
+    $("#big").textContent = n;
+    setText(DADO[n], false);
+    S.card = { tipo:"dado", l:1, t:DADO[n], resuelto:true };
+
+    if(n === 2) castigoLeve();
+    if(n === 3) minuto(15);
+    if(n === 5) draw();
+    if(n === 6) S.pend.push("Castigo doble por dado: cumplís dos pendientes.");
+  });
+
+  $("#bRoul").addEventListener("click", () => {
+    if(S.busy || S.minId) return;
+    S.busy = true;
+    clearExtras();
+    badge("Ruleta", false);
+    dots(0);
+    $("#big").classList.remove("hidden");
+    $("#big").classList.add("small");
+    let i = 0, total = 18 + Math.floor(Math.random()*8);
+    const id = setInterval(() => {
+      $("#big").textContent = RULETA[i % RULETA.length];
+      i++;
+      if(i >= total){
+        clearInterval(id);
+        const final = RULETA[Math.floor(Math.random()*RULETA.length)];
+        $("#big").textContent = final;
+        setText("Salió: " + final, false);
+        S.card = { tipo:"ruleta", l:1, t:"Salió: " + final, resuelto:true };
+        S.busy = false;
+      }
+    }, 70);
+  });
+
+function minuto(seg = 60){
+    if(S.minId) return;
+    clearInterval(S.minId);
+    clearExtras();
+    badge(seg + " segundos", false);
+    dots(0);
+    let left = seg;
+    const el = $("#clock");
+    el.classList.remove("run"); el.classList.add("warn");
+    setText(seg + " segundos con cámara fija. Sin cortar.", false);
+    $("#big").classList.remove("hidden");
+    $("#big").textContent = String(left);
+    S.minId = setInterval(() => {
+      left--;
+      $("#big").textContent = String(left);
+      el.textContent = "00:" + String(left).padStart(2,"0");
+      if(left <= 0){
+        clearInterval(S.minId);
+        S.minId = null;
+        $("#big").textContent = "Tiempo";
+        setText("Se terminó.", true);
+        el.classList.remove("warn"); el.classList.add("run");
+        startClock();
+      }
+    }, 1000);
+  }
+
+  $("#bMin").addEventListener("click", () => minuto(60));
+
+  $("#bCorte").addEventListener("click", () => {
+    clearInterval(S.minId); S.minId = null;
+    S.busy = false;
+    clearExtras();
+    badge("Corte", false);
+    dots(0);
+    setText('Se cortó todo. Palabra usada: "' + S.safe + '". Nadie discute.', true);
+    S.card = null;
+    startClock();
+  });
+
+  /* ---------- ajustes ---------- */
+  $("#bCfg").addEventListener("click", () => $("#cfg").classList.toggle("hidden"));
+  $("#bSaved").addEventListener("click", () => { renderSaved(); $("#savedBox").classList.toggle("hidden"); });
+  $("#bPend").addEventListener("click", () => { renderPend(); $("#pendBox").classList.toggle("hidden"); });
+
+  $("#p1").addEventListener("input", e => { S.p[0] = e.target.value.trim() || "Vos"; turnName(); save(); });
+  $("#p2").addEventListener("input", e => { S.p[1] = e.target.value.trim() || "Ella"; turnName(); save(); });
+  $("#safe").addEventListener("input", e => { S.safe = e.target.value.trim() || "rojo"; safeShow(); save(); });
+
+  $("#lvls").addEventListener("click", e => {
+    const b = e.target.closest(".lvl");
+    if(!b) return;
+    S.level = +b.dataset.l;
+    syncUI(); save();
+  });
+
+  $("#cats").addEventListener("click", e => {
+    const b = e.target.closest(".chip");
+    if(!b) return;
+    const c = b.dataset.c;
+    const activas = Object.values(S.cats).filter(Boolean).length;
+    if(S.cats[c] && activas === 1) return;
+    S.cats[c] = !S.cats[c];
+    syncUI(); save();
+  });
+
+  $("#savedList").addEventListener("click", e => {
+    const u = e.target.dataset.use, d = e.target.dataset.del;
+    if(u !== undefined){
+      const t = S.saved[+u];
+      S.card = { tipo:"guardada", l:S.level, t, resuelto:false };
+      badge("Guardada", false); dots(S.level); clearExtras(); setText(t, false);
+      $("#savedBox").classList.add("hidden");
+    }
+    if(d !== undefined){ S.saved.splice(+d,1); save(); renderSaved(); syncUI(); }
+  });
+
+  $("#pendList").addEventListener("click", e => {
+    const o = e.target.dataset.ok, d = e.target.dataset.del;
+    if(o !== undefined){ S.pend.splice(+o,1); save(); renderPend(); syncUI(); }
+    if(d !== undefined){ S.pend.splice(+d,1); save(); renderPend(); syncUI(); }
+  });
+
+  /* ---------- arranque ---------- */
+  load();
+  syncUI();
+  renderSaved();
+  renderPend();
+  startClock();
+  setText('Pulsá "Robar carta" y leé la consigna en voz alta.', true);
+})();
+</script>
+</body>
+</html>
